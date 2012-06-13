@@ -190,6 +190,7 @@ FORMAT_MESSAGE_MAX_WIDTH_MASK = 0x000000FF
 FSCTL_CREATE_USN_JOURNAL = 0x000900E7
 FSCTL_QUERY_USN_JOURNAL = 0x000900F4
 FSCTL_ENUM_USN_DATA = 0x000900B3
+FSCTL_READ_USN_JOURNAL = 0x000900BB
 
 
 def MAKELANGID(p, s):
@@ -269,6 +270,15 @@ class MFT_ENUM_DATA(ctypes.Structure):
                  ('LowUsn', USN),
                  ('HighUsn', USN)]
 LPMFT_ENUM_DATA = ctypes.POINTER(MFT_ENUM_DATA)
+
+class READ_USN_JOURNAL_DATA(ctypes.Structure):
+    _fields_ = [ ('StartUsn', USN),
+                 ('ReasonMask', DWORD),
+                 ('ReturnOnlyOnClose', DWORD),
+                 ('Timeout', DWORDLONG),
+                 ('BytesToWaitFor', DWORDLONG),
+                 ('UsnJournalID', DWORDLONG)]
+LPREAD_USN_JOURNAL_DATA = ctypes.POINTER(READ_USN_JOURNAL_DATA)
 
 _kernel.GetStdHandle.argtypes= [DWORD]
 _kernel.GetStdHandle.restype=HANDLE

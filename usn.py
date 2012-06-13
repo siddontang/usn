@@ -80,7 +80,7 @@ def getUsnJournal(hVolHandle):
                           None)
     return usnData if ret == True else None
 
-def enumUsnJournal(hVolHandle, usnData):
+def enumUsnJournal(hVolHandle, usnData, callback):
     med = MFT_ENUM_DATA()
     med.StartFileReferenceNumber = 0
     med.LowUsn = 0
@@ -108,33 +108,81 @@ def enumUsnJournal(hVolHandle, usnData):
         while dwRetBytes > 0:
             usnRecord = ctypes.cast(ctypes.byref(buf, ctypes.sizeof(USN) + offset), LPUSN_RECORD)[0]
             
-            dealUsnRecord(usnRecord)
+            _dealUsnRecord(usnRecord, callback)
             
             recordLen = usnRecord.RecordLength
             dwRetBytes -= recordLen
             offset += recordLen
 
         med.StartFileReferenceNumber = ctypes.cast(ctypes.byref(buf), LPUSN)[0]
+
+
+def readUsnJournal(hVolHandle, usnData, callback):
+    readData = READ_USN_JOURNAL_DATA()
+    readData.StartUsn = 281888
+    readData.ReasonMask = 0xFFFFFFFF
+    readData.ReturnOnlyOnClose = 0
+    readData.Timeout = 0
+    readData.BytesToWaitFor = 0
+    readData.UsnJournalID = usnData.UsnJournalID
+
+    bufLen = 4096
+    buf = ctypes.create_string_buffer(bufLen)
+    usnDataSize = DWORD()
+    while True:
+        ret = DeviceIoControl(hVolHandle,
+                               FSCTL_READ_USN_JOURNAL,
+                               ctypes.byref(readData),
+                               ctypes.sizeof(readData),
+                               buf,
+                               bufLen,
+                               ctypes.byref(usnDataSize),
+                               None)
+        if ret != True:
+            break
+
+        dwRetBytes = usnDataSize.value - ctypes.sizeof(USN)
+        offset = 0
+
+        if dwRetBytes == 0:
+            break
+        
+        while dwRetBytes > 0:
+            usnRecord = ctypes.cast(ctypes.byref(buf, ctypes.sizeof(USN) + offset), LPUSN_RECORD)[0]
             
-def dealUsnRecord(usnRecord):
-    ptr = ctypes.addressof(usnRecord) + USN_RECORD.FileName.offset
+            _dealUsnRecord(usnRecord, callback)
+            
+            recordLen = usnRecord.RecordLength
+            dwRetBytes -= recordLen
+            offset += recordLen
+
+        readData.StartUsn  = ctypes.cast(ctypes.byref(buf), LPUSN)[0]
+        
+def _dealUsnRecord(usnRecord, callback):
+    ptr = ctypes.addressof(usnRecord) + usnRecord.FileNameOffset
     fileName = ctypes.string_at(ptr, usnRecord.FileNameLength)
-    fileReferecnNumber = usnRecord.FileReferenceNumber
-    parentReferenceNumber = usnRecord.ParentFileReferenceNumber
-    reason = usnRecord.Reason
+    fileName = fileName.decode('utf16')
+    #fileReferenceNumber = usnRecord.FileReferenceNumber
+    #parentReferenceNumber = usnRecord.ParentFileReferenceNumber
+    #reason = usnRecord.Reason
+    
+    callback(fileName, usnRecord)
 
     
-    pass
-
-def testMain():
-    if not checkNtfs("c"):
+def testMain(volName):
+    if not checkNtfs(volName):
         return
-    handle = getVolumeHandle("c")
-    print initUsnJournal(handle)
+    handle = getVolumeHandle(volName)
+    initUsnJournal(handle)
     data =  getUsnJournal(handle)
     
     if data:
-        enumUsnJournal(handle, data)
-    
+        def allback(fileName, usnRecord):
+            pass
+
+        readUsnJournal(handle, data, callback)
+
+    CloseHandle(handle)
+                
 if __name__ == '__main__':
-    testMain()
+    testMain("f")

@@ -117,9 +117,9 @@ def enumUsnJournal(hVolHandle, usnData, callback):
         med.StartFileReferenceNumber = ctypes.cast(ctypes.byref(buf), LPUSN)[0]
 
 
-def readUsnJournal(hVolHandle, usnData, callback):
+def readUsnJournal(hVolHandle, usnData, startUsn, callback):
     readData = READ_USN_JOURNAL_DATA()
-    readData.StartUsn = 281888
+    readData.StartUsn = startUsn
     readData.ReasonMask = 0xFFFFFFFF
     readData.ReturnOnlyOnClose = 0
     readData.Timeout = 0
@@ -160,12 +160,9 @@ def readUsnJournal(hVolHandle, usnData, callback):
         
 def _dealUsnRecord(usnRecord, callback):
     ptr = ctypes.addressof(usnRecord) + usnRecord.FileNameOffset
-    fileName = ctypes.string_at(ptr, usnRecord.FileNameLength)
-    fileName = fileName.decode('utf16')
-    #fileReferenceNumber = usnRecord.FileReferenceNumber
-    #parentReferenceNumber = usnRecord.ParentFileReferenceNumber
-    #reason = usnRecord.Reason
-    
+    fileName = ctypes.wstring_at(ptr, usnRecord.FileNameLength / 2)
+    #fileName = fileName.encode('utf8')
+        
     callback(fileName, usnRecord)
 
     
@@ -177,10 +174,10 @@ def testMain(volName):
     data =  getUsnJournal(handle)
     
     if data:
-        def allback(fileName, usnRecord):
+        def callback(fileName, usnRecord):
             pass
 
-        readUsnJournal(handle, data, callback)
+        readUsnJournal(handle, data, 0, callback)
 
     CloseHandle(handle)
                 

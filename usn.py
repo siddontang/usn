@@ -175,7 +175,7 @@ def testMain(volName):
     
     if data:
         def callback(fileName, usnRecord):
-            pass
+            print fileName, usnRecord.Usn, usnRecord.FileReferenceNumber, usnRecord.ParentFileReferenceNumber
 
         readUsnJournal(handle, data, 0, callback)
 
